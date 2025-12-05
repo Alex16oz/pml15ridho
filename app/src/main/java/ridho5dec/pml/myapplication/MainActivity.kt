@@ -21,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds // <--- DITAMBAHKAN
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -253,7 +254,10 @@ fun MapScreen(
 
         // --- PETA & FAB ---
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
+            AndroidView(
+                factory = { mapView },
+                modifier = Modifier.fillMaxSize().clipToBounds() // <--- MODIFIKASI INI
+            )
 
             Column(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
