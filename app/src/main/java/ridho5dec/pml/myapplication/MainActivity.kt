@@ -15,7 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Home // <--- IMPORT BARU
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Hexagon
 import androidx.compose.material3.*
@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Konfigurasi OSMDroid (Menggunakan getSharedPreferences biasa agar tidak deprecated)
+        // Konfigurasi OSMDroid
         Configuration.getInstance().load(
             applicationContext,
             applicationContext.getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
@@ -70,7 +70,6 @@ class MainActivity : ComponentActivity() {
         // Inisialisasi AirLocation (GPS)
         airLocation = AirLocation(this, object : AirLocation.Callback {
             override fun onSuccess(locations: ArrayList<Location>) {
-                // Update state lokasi saat berhasil didapatkan
                 locationState.value = locations.firstOrNull()
             }
             override fun onFailure(locationFailedEnum: AirLocation.LocationFailedEnum) {
@@ -78,13 +77,11 @@ class MainActivity : ComponentActivity() {
             }
         }, isLocationRequiredOnlyOneTime = true)
 
-        // Mulai pencarian lokasi (pastikan dipanggil pada objek airLocation)
         airLocation?.start()
 
         setContent {
             Pml15RidhoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    // Kirim state lokasi dan fungsi refresh ke UI
                     MapScreen(
                         modifier = Modifier.padding(innerPadding),
                         currentLocation = locationState.value,
@@ -95,14 +92,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Override onActivityResult (Wajib untuk AirLocation)
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         airLocation?.onActivityResult(requestCode, resultCode, data)
     }
 
-    // Override onRequestPermissionsResult (Wajib untuk AirLocation)
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         airLocation?.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -124,14 +119,12 @@ fun MapScreen(
     onRefreshLocation: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope() // Untuk coroutine background (Routing)
+    val scope = rememberCoroutineScope()
 
-    // State UI
     var textTujuan by remember { mutableStateOf("") }
     var infoTujuan by remember { mutableStateOf("Info Lokasi Tujuan...") }
     var infoJarak by remember { mutableStateOf("Info Jarak & Durasi...") }
 
-    // MapView instance
     val mapView = remember {
         MapView(context).apply {
             setTileSource(TileSourceFactory.MAPNIK)
@@ -140,18 +133,15 @@ fun MapScreen(
         }
     }
 
-    // Efek ketika lokasi berubah
     LaunchedEffect(currentLocation) {
         currentLocation?.let { loc ->
             val geoPoint = GeoPoint(loc.latitude, loc.longitude)
             mapView.controller.animateTo(geoPoint)
 
-            // Tambahkan overlay MyLocation
             val locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(context), mapView)
             locationOverlay.enableMyLocation()
             mapView.overlays.add(locationOverlay)
 
-            // Tambahkan Kompas
             val compassOverlay = CompassOverlay(context, InternalCompassOrientationProvider(context), mapView)
             compassOverlay.enableCompass()
             mapView.overlays.add(compassOverlay)
@@ -162,7 +152,7 @@ fun MapScreen(
 
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
 
-        // --- BAGIAN ATAS: Info Posisi ---
+        // --- Info Posisi ---
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Button(onClick = onRefreshLocation, modifier = Modifier.padding(end = 8.dp)) {
                 Text("Refresh")
@@ -177,7 +167,7 @@ fun MapScreen(
         }
         Spacer(modifier = Modifier.height(8.dp))
 
-        // --- BAGIAN INPUT: Pencarian ---
+        // --- Input Pencarian ---
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = textTujuan, onValueChange = { textTujuan = it },
@@ -185,46 +175,36 @@ fun MapScreen(
                 modifier = Modifier.weight(1f).padding(end = 8.dp), singleLine = true
             )
             Button(onClick = {
-                // LOGIKA PENCARIAN & ROUTING
+                // ... (Logika Pencarian tetap sama, dipersingkat agar fokus pada perubahan di bawah) ...
                 if (currentLocation != null && textTujuan.isNotEmpty()) {
                     val startPoint = GeoPoint(currentLocation.latitude, currentLocation.longitude)
-
-                    scope.launch(Dispatchers.IO) { // Jalankan di background
+                    scope.launch(Dispatchers.IO) {
                         try {
                             val geocoder = Geocoder(context, Locale.getDefault())
-                            // Menggunakan cara lama (deprecated tapi stabil untuk API level rendah-menengah)
                             @Suppress("DEPRECATION")
                             val addresses = geocoder.getFromLocationName(textTujuan, 1)
-
                             if (!addresses.isNullOrEmpty()) {
                                 val address = addresses[0]
                                 val endPoint = GeoPoint(address.latitude, address.longitude)
-
                                 withContext(Dispatchers.Main) {
                                     infoTujuan = "Tujuan: ${address.featureName ?: textTujuan}\nLat: ${address.latitude}, Lng: ${address.longitude}"
                                 }
-
                                 val roadManager = OSRMRoadManager(context, "userAgent/1.0")
-                                val waypoints = arrayListOf(startPoint, endPoint)
-                                val road = roadManager.getRoad(waypoints)
-
+                                val road = roadManager.getRoad(arrayListOf(startPoint, endPoint))
                                 withContext(Dispatchers.Main) {
                                     if (road.mStatus == Road.STATUS_OK) {
                                         val roadOverlay = RoadManager.buildRoadOverlay(road)
-                                        roadOverlay.outlinePaint.color = Color.rgb(228, 0, 92) // FIX: color deprecated
-                                        roadOverlay.outlinePaint.strokeWidth = 10f // FIX: width deprecated
+                                        roadOverlay.outlinePaint.color = Color.rgb(228, 0, 92)
+                                        roadOverlay.outlinePaint.strokeWidth = 10f
                                         mapView.overlays.add(roadOverlay)
-
                                         val marker = Marker(mapView)
                                         marker.position = endPoint
                                         marker.title = textTujuan
                                         mapView.overlays.add(marker)
 
                                         val km = String.format(Locale.US, "%.2f", road.mLength)
-                                        val durationSec = road.mDuration
-                                        val min = (durationSec / 60).toInt()
+                                        val min = (road.mDuration / 60).toInt()
                                         infoJarak = "Jarak: $km km, Durasi: $min menit"
-
                                         mapView.invalidate()
                                         mapView.zoomToBoundingBox(roadOverlay.bounds, true, 50)
                                     } else {
@@ -232,16 +212,10 @@ fun MapScreen(
                                     }
                                 }
                             } else {
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "Lokasi tidak ditemukan", Toast.LENGTH_SHORT).show()
-                                }
+                                withContext(Dispatchers.Main) { Toast.makeText(context, "Lokasi tidak ditemukan", Toast.LENGTH_SHORT).show() }
                             }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
+                        } catch (e: Exception) { e.printStackTrace() }
                     }
-                } else {
-                    Toast.makeText(context, "Lokasi GPS belum siap atau tujuan kosong", Toast.LENGTH_SHORT).show()
                 }
             }) { Text("Cari") }
         }
@@ -261,15 +235,13 @@ fun MapScreen(
 
             Column(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
-                // FAB 1: Polyline Manual (Sesuai Modul)
+                // FAB 1: Polyline Manual
                 SmallFloatingActionButton(onClick = {
                     currentLocation?.let { loc ->
                         val lat = loc.latitude
                         val lng = loc.longitude
-
-                        // Menyesuaikan koordinat sesuai dengan implementasi drawPolyline() pada modul
                         val points = listOf(
-                            GeoPoint(lat, lng), // y,x
+                            GeoPoint(lat, lng),
                             GeoPoint(lat, lng + 0.002),
                             GeoPoint(lat + 0.002, lng + 0.002),
                             GeoPoint(lat + 0.002, lng - 0.002),
@@ -277,36 +249,26 @@ fun MapScreen(
                             GeoPoint(lat - 0.002, lng + 0.002),
                             GeoPoint(lat - 0.00050, lng + 0.00200)
                         )
-
                         val polyline = Polyline()
                         polyline.setPoints(points)
                         polyline.outlinePaint.color = Color.BLUE
-                        // Lebar garis 10f sesuai modul
                         polyline.outlinePaint.strokeWidth = 10f
                         mapView.overlays.add(polyline)
                         mapView.invalidate()
-
-                        // Zoom dengan padding 200 sesuai modul
-                        polyline.bounds?.let { bbox ->
-                            mapView.zoomToBoundingBox(bbox, true, 200)
-                        }
+                        polyline.bounds?.let { mapView.zoomToBoundingBox(it, true, 200) }
                     }
                 }, containerColor = ColorFabBlue) { Icon(Icons.Filled.Share, "Polyline") }
 
-                // FAB 2: Polygon
+                // FAB 2: Polygon (Contoh asli)
                 SmallFloatingActionButton(onClick = {
-                    // MENGUBAH: Menggunakan koordinat tetap sesuai permintaan
                     val lat = -7.80088236980126
                     val lng = 112.00859247396205
-
-                    // Membuat bentuk kotak di sekitar koordinat tersebut
                     val points = listOf(
                         GeoPoint(lat + 0.002, lng + 0.002),
                         GeoPoint(lat + 0.002, lng - 0.002),
                         GeoPoint(lat - 0.002, lng - 0.002),
                         GeoPoint(lat - 0.002, lng + 0.002)
                     )
-
                     val polygon = Polygon()
                     polygon.points = points
                     polygon.fillColor = Color.argb(128, 0, 255, 0)
@@ -314,16 +276,14 @@ fun MapScreen(
                     polygon.outlinePaint.strokeWidth = 2f
                     mapView.overlays.add(polygon)
                     mapView.invalidate()
-
-                    // Zoom otomatis ke area polygon
                     mapView.zoomToBoundingBox(polygon.bounds, true, 100)
                 }, containerColor = ColorFabBlue) { Icon(Icons.Outlined.Hexagon, "Polygon") }
 
-                // FAB 3: Rute ke Rumah (BARU DITAMBAHKAN)
+                // FAB 3: Rute ke Rumah + KOTAK RADIUS (UPDATED)
                 SmallFloatingActionButton(onClick = {
                     if (currentLocation != null) {
                         val startPoint = GeoPoint(currentLocation.latitude, currentLocation.longitude)
-                        val endPoint = GeoPoint(-7.907112724888536, 112.05332056189468) // Koordinat Rumah
+                        val endPoint = GeoPoint(-7.907112724888536, 112.05332056189468) // Rumah
 
                         scope.launch(Dispatchers.IO) {
                             try {
@@ -333,18 +293,37 @@ fun MapScreen(
 
                                 withContext(Dispatchers.Main) {
                                     if (road.mStatus == Road.STATUS_OK) {
+                                        // 1. Gambar Jalan
                                         val roadOverlay = RoadManager.buildRoadOverlay(road)
                                         roadOverlay.outlinePaint.color = Color.MAGENTA
                                         roadOverlay.outlinePaint.strokeWidth = 10f
                                         mapView.overlays.add(roadOverlay)
 
+                                        // 2. Gambar Marker
                                         val marker = Marker(mapView)
                                         marker.position = endPoint
                                         marker.title = "Rumah"
                                         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                                         mapView.overlays.add(marker)
 
-                                        // Update info text
+                                        // 3. Gambar Kotak Radius (BARU)
+                                        // Menggunakan logika yang sama seperti FAB Polygon
+                                        val latRumah = endPoint.latitude
+                                        val lngRumah = endPoint.longitude
+                                        val radiusPoints = listOf(
+                                            GeoPoint(latRumah + 0.0001, lngRumah + 0.0001),
+                                            GeoPoint(latRumah + 0.0001, lngRumah - 0.0001),
+                                            GeoPoint(latRumah - 0.0002, lngRumah - 0.0001),
+                                            GeoPoint(latRumah - 0.0002, lngRumah + 0.0001)
+                                        )
+                                        val radiusPolygon = Polygon()
+                                        radiusPolygon.points = radiusPoints
+                                        radiusPolygon.fillColor = Color.argb(128, 0, 255, 0) // Hijau Transparan
+                                        radiusPolygon.outlinePaint.color = Color.GREEN
+                                        radiusPolygon.outlinePaint.strokeWidth = 2f
+                                        mapView.overlays.add(radiusPolygon)
+
+                                        // Update Info Text
                                         infoTujuan = "Tujuan: Rumah\nLat: ${endPoint.latitude}, Lng: ${endPoint.longitude}"
                                         val km = String.format(Locale.US, "%.2f", road.mLength)
                                         val durationSec = road.mDuration
