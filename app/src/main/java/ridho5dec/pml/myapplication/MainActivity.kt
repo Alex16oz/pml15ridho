@@ -15,13 +15,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Home // <--- IMPORT BARU
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Hexagon
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds // <--- DITAMBAHKAN
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -102,7 +103,6 @@ class MainActivity : ComponentActivity() {
     }
 
     // Override onRequestPermissionsResult (Wajib untuk AirLocation)
-    // PERBAIKAN: Menggunakan Array<String> bukan Array<out String> untuk menghindari error mismatch
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         airLocation?.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -256,7 +256,7 @@ fun MapScreen(
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             AndroidView(
                 factory = { mapView },
-                modifier = Modifier.fillMaxSize().clipToBounds() // <--- MODIFIKASI INI
+                modifier = Modifier.fillMaxSize().clipToBounds()
             )
 
             Column(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -269,13 +269,13 @@ fun MapScreen(
 
                         // Menyesuaikan koordinat sesuai dengan implementasi drawPolyline() pada modul
                         val points = listOf(
-                            GeoPoint(lat, lng), // y,x [cite: 300]
-                            GeoPoint(lat, lng + 0.002), // [cite: 302]
-                            GeoPoint(lat + 0.002, lng + 0.002), // [cite: 303]
-                            GeoPoint(lat + 0.002, lng - 0.002), // [cite: 304, 305]
-                            GeoPoint(lat - 0.002, lng - 0.002), // [cite: 306, 307]
-                            GeoPoint(lat - 0.002, lng + 0.002), // [cite: 308, 309]
-                            GeoPoint(lat - 0.00050, lng + 0.00200) // [cite: 310, 311]
+                            GeoPoint(lat, lng), // y,x
+                            GeoPoint(lat, lng + 0.002),
+                            GeoPoint(lat + 0.002, lng + 0.002),
+                            GeoPoint(lat + 0.002, lng - 0.002),
+                            GeoPoint(lat - 0.002, lng - 0.002),
+                            GeoPoint(lat - 0.002, lng + 0.002),
+                            GeoPoint(lat - 0.00050, lng + 0.00200)
                         )
 
                         val polyline = Polyline()
@@ -318,9 +318,57 @@ fun MapScreen(
                     // Zoom otomatis ke area polygon
                     mapView.zoomToBoundingBox(polygon.bounds, true, 100)
                 }, containerColor = ColorFabBlue) { Icon(Icons.Outlined.Hexagon, "Polygon") }
+
+                // FAB 3: Rute ke Rumah (BARU DITAMBAHKAN)
+                SmallFloatingActionButton(onClick = {
+                    if (currentLocation != null) {
+                        val startPoint = GeoPoint(currentLocation.latitude, currentLocation.longitude)
+                        val endPoint = GeoPoint(-7.907112724888536, 112.05332056189468) // Koordinat Rumah
+
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                val roadManager = OSRMRoadManager(context, "userAgent/1.0")
+                                val waypoints = arrayListOf(startPoint, endPoint)
+                                val road = roadManager.getRoad(waypoints)
+
+                                withContext(Dispatchers.Main) {
+                                    if (road.mStatus == Road.STATUS_OK) {
+                                        val roadOverlay = RoadManager.buildRoadOverlay(road)
+                                        roadOverlay.outlinePaint.color = Color.MAGENTA
+                                        roadOverlay.outlinePaint.strokeWidth = 10f
+                                        mapView.overlays.add(roadOverlay)
+
+                                        val marker = Marker(mapView)
+                                        marker.position = endPoint
+                                        marker.title = "Rumah"
+                                        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                        mapView.overlays.add(marker)
+
+                                        // Update info text
+                                        infoTujuan = "Tujuan: Rumah\nLat: ${endPoint.latitude}, Lng: ${endPoint.longitude}"
+                                        val km = String.format(Locale.US, "%.2f", road.mLength)
+                                        val durationSec = road.mDuration
+                                        val min = (durationSec / 60).toInt()
+                                        infoJarak = "Jarak: $km km, Durasi: $min menit"
+
+                                        mapView.invalidate()
+                                        mapView.zoomToBoundingBox(roadOverlay.bounds, true, 100)
+                                    } else {
+                                        Toast.makeText(context, "Gagal memuat rute ke Rumah", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                    } else {
+                        Toast.makeText(context, "Lokasi GPS belum siap", Toast.LENGTH_SHORT).show()
+                    }
+                }, containerColor = ColorFabBlue) { Icon(Icons.Filled.Home, "Rumah") }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // FAB 3: Delete
+                // FAB 4: Delete
                 SmallFloatingActionButton(onClick = {
                     if (mapView.overlays.size > 2) {
                         mapView.overlays.clear()
