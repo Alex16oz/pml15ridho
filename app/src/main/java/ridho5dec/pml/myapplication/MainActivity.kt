@@ -261,29 +261,38 @@ fun MapScreen(
 
             Column(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
-                // FAB 1: Polyline Manual
+                // FAB 1: Polyline Manual (Sesuai Modul)
                 SmallFloatingActionButton(onClick = {
                     currentLocation?.let { loc ->
                         val lat = loc.latitude
                         val lng = loc.longitude
+
+                        // Menyesuaikan koordinat sesuai dengan implementasi drawPolyline() pada modul
                         val points = listOf(
-                            GeoPoint(lat, lng),
-                            GeoPoint(lat + 0.002, lng + 0.002),
-                            GeoPoint(lat + 0.002, lng - 0.002),
-                            GeoPoint(lat - 0.002, lng - 0.002),
-                            GeoPoint(lat, lng)
+                            GeoPoint(lat, lng), // y,x [cite: 300]
+                            GeoPoint(lat, lng + 0.002), // [cite: 302]
+                            GeoPoint(lat + 0.002, lng + 0.002), // [cite: 303]
+                            GeoPoint(lat + 0.002, lng - 0.002), // [cite: 304, 305]
+                            GeoPoint(lat - 0.002, lng - 0.002), // [cite: 306, 307]
+                            GeoPoint(lat - 0.002, lng + 0.002), // [cite: 308, 309]
+                            GeoPoint(lat - 0.00050, lng + 0.00200) // [cite: 310, 311]
                         )
+
                         val polyline = Polyline()
                         polyline.setPoints(points)
                         polyline.outlinePaint.color = Color.BLUE
-                        polyline.outlinePaint.strokeWidth = 5f
+                        // Lebar garis 10f sesuai modul
+                        polyline.outlinePaint.strokeWidth = 10f
                         mapView.overlays.add(polyline)
                         mapView.invalidate()
-                        mapView.zoomToBoundingBox(polyline.bounds, true, 100)
+
+                        // Zoom dengan padding 200 sesuai modul
+                        polyline.bounds?.let { bbox ->
+                            mapView.zoomToBoundingBox(bbox, true, 200)
+                        }
                     }
                 }, containerColor = ColorFabBlue) { Icon(Icons.Filled.Share, "Polyline") }
 
-                // FAB 2: Polygon
                 // FAB 2: Polygon
                 SmallFloatingActionButton(onClick = {
                     // MENGUBAH: Menggunakan koordinat tetap sesuai permintaan
