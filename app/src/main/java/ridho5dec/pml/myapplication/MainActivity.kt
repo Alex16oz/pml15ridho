@@ -280,27 +280,31 @@ fun MapScreen(
                 }, containerColor = ColorFabBlue) { Icon(Icons.Filled.Share, "Polyline") }
 
                 // FAB 2: Polygon
+                // FAB 2: Polygon
                 SmallFloatingActionButton(onClick = {
-                    currentLocation?.let { loc ->
-                        val lat = loc.latitude - 0.005
-                        val lng = loc.longitude
-                        val points = listOf(
-                            GeoPoint(lat + 0.002, lng + 0.002),
-                            GeoPoint(lat + 0.002, lng - 0.002),
-                            GeoPoint(lat - 0.002, lng - 0.002),
-                            GeoPoint(lat - 0.002, lng + 0.002)
-                        )
-                        val polygon = Polygon()
-                        polygon.points = points
-                        polygon.fillColor = Color.argb(128, 0, 255, 0)
-                        polygon.outlinePaint.color = Color.GREEN // strokeColor diganti outlinePaint
-                        polygon.outlinePaint.strokeWidth = 2f
-                        mapView.overlays.add(polygon)
-                        mapView.invalidate()
-                        mapView.zoomToBoundingBox(polygon.bounds, true, 100)
-                    }
-                }, containerColor = ColorFabBlue) { Icon(Icons.Outlined.Hexagon, "Polygon") }
+                    // MENGUBAH: Menggunakan koordinat tetap sesuai permintaan
+                    val lat = -7.80088236980126
+                    val lng = 112.00859247396205
 
+                    // Membuat bentuk kotak di sekitar koordinat tersebut
+                    val points = listOf(
+                        GeoPoint(lat + 0.002, lng + 0.002),
+                        GeoPoint(lat + 0.002, lng - 0.002),
+                        GeoPoint(lat - 0.002, lng - 0.002),
+                        GeoPoint(lat - 0.002, lng + 0.002)
+                    )
+
+                    val polygon = Polygon()
+                    polygon.points = points
+                    polygon.fillColor = Color.argb(128, 0, 255, 0)
+                    polygon.outlinePaint.color = Color.GREEN
+                    polygon.outlinePaint.strokeWidth = 2f
+                    mapView.overlays.add(polygon)
+                    mapView.invalidate()
+
+                    // Zoom otomatis ke area polygon
+                    mapView.zoomToBoundingBox(polygon.bounds, true, 100)
+                }, containerColor = ColorFabBlue) { Icon(Icons.Outlined.Hexagon, "Polygon") }
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // FAB 3: Delete
