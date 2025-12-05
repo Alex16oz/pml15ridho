@@ -50,7 +50,12 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation("org.osmdroid:osmdroid-android:6.1.10")
-    implementation("androidx.compose.material:material-icons-extended:1.7.0") // Opsional untuk ikon yang lebih lengkap
+    implementation("androidx.compose.material:material-icons-extended:1.7.0")
+    implementation("com.github.mumayank:AirLocation:2.5.2")
+    implementation("com.github.MKergall:osmbonuspack:6.9.0")
+
+    // Pastikan osmdroid juga ada (sepertinya sudah ada di file Anda)
+    implementation("org.osmdroid:osmdroid-android:6.1.10")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
